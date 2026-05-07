@@ -1,26 +1,28 @@
 FROM python:3.11-slim
 
-# Install system dependencies for PDF and document processing
+# Install system dependencies for PDF processing, document parsing, and security tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     libmagic-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements file first to leverage Docker layer caching
 COPY requirements.txt .
 
 # Install Python dependencies
-# 'crewai[docling]' handles Markdown, Docx, etc.
-# 'openpyxl' and 'pandas' handle Excel and CSV
+# Includes support for PDF, Excel, YAML, Docx, and Webhooks
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Copy the entire agent-app directory contents into /app
+# This includes main.py, agents/, tools/, loaders/, and knowledge_manager.py
 COPY . .
 
-# Ensure the output directory exists for safe_write tools
-RUN mkdir -p /app/output /app/knowledge
+# Create necessary persistent and safe directories
+RUN mkdir -p /app/output /app/knowledge /app/.crewai
 
-# We define the command in docker-compose.yml to allow for -u (unbuffered) flags
-# and to easily switch between 'main.py' and a sleeping 'tail -f' for debugging.
+# The command is handled in docker-compose.yml to enable unbuffered logs (-u) 
+# and interactive TTY support for Human-in-the-Loop prompts.
