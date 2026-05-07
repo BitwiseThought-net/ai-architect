@@ -9,7 +9,6 @@ services:
       - .env
     volumes:
       - ./ollama:/root/.ollama
-    # Auto-pulls the main model and embedding model on startup
     entrypoint: /bin/sh -c "ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && ollama pull nomic-embed-text && wait"
     deploy:
       resources:
@@ -25,10 +24,10 @@ services:
     restart: always
     ports:
       - "${LITELLM_PORT}:4000"
-    environment:
-      - OLLAMA_API_BASE=${OLLAMA_BASE_URL}
     env_file:
       - .env
+    environment:
+      - OLLAMA_API_BASE=${OLLAMA_BASE_URL}
     command: ["--model", "ollama/${MODEL_NAME}", "--port", "4000", "--drop_params"]
     depends_on:
       - ollama
@@ -53,10 +52,10 @@ services:
       - "${UI_PORT}:8080"
     volumes:
       - ./open-webui:/app/backend/data
-    environment:
-      - "OPENAI_API_BASE_URL=${LITELLM_BASE_URL}"
     env_file:
       - .env
+    environment:
+      - "OPENAI_API_BASE_URL=${LITELLM_BASE_URL}"
     depends_on:
       - ollama
 
@@ -64,19 +63,19 @@ services:
     container_name: agent-smith
     build:
       context: ./agent-app
-    command: python -u main.py
-    stdin_open: true # Required for Human-in-the-Loop input
-    tty: true        # Required for Human-in-the-Loop input
+    stdin_open: true
+    tty: true
     volumes:
-#      - ./agent-app:/app
-      - agent-memory:/app/agent-app/.crewai
-    environment:
-      - PYTHONUNBUFFERED=1 # Ensures real-time log output
-      - OPENAI_API_BASE=${LITELLM_BASE_URL}
-      - CHROMA_API_BASE=http://chromadb:8000
-      - CREWAI_STORAGE_DIR=/app/agent-app/.crewai
+      - ./agent-app:/app
+      - agent-memory:/app/.crewai
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_BASE=${LITELLM_BASE_URL}
+      - CHROMA_API_BASE=http://chromadb:8000
+      - CREWAI_STORAGE_DIR=/app/.crewai
+    command: python -u main.py
     depends_on:
       - litellm
       - chromadb
