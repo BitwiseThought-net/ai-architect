@@ -64,11 +64,11 @@ services:
     container_name: agent-smith
     build:
       context: ./agent-app
-#    command: python -u main.py
+    command: python -u main.py
     stdin_open: true # Required for Human-in-the-Loop input
     tty: true        # Required for Human-in-the-Loop input
     volumes:
-      - ./agent-app:/app
+#      - ./agent-app:/app
       - agent-memory:/app/.crewai
     environment:
       - PYTHONUNBUFFERED=1 # Ensures real-time log output
