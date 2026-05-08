@@ -1,4 +1,26 @@
 services:
+  service:
+    container_name: agent-smith
+    build:
+      context: .
+      dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
+    volumes:
+      - agent-memory:/app/.crewai
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=.
+      - OPENAI_API_BASE=${LITELLM_BASE_URL}
+      - CHROMA_API_BASE=http://chromadb:8000
+      - CREWAI_STORAGE_DIR=/app/.crewai
+    depends_on:
+      - litellm
+      - chromadb
+
   ollama:
     container_name: agent-ollama
     image: ollama/ollama:latest
@@ -59,27 +81,20 @@ services:
     depends_on:
       - ollama
 
-  service:
-    container_name: agent-smith
-    build:
-      context: .
-      dockerfile: Dockerfile
-    stdin_open: true
-    tty: true
-    volumes:
-      - agent-memory:/app/.crewai
-    working_dir: /app
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONPATH=.
-      - OPENAI_API_BASE=${LITELLM_BASE_URL}
-      - CHROMA_API_BASE=http://chromadb:8000
-      - CREWAI_STORAGE_DIR=/app/.crewai
+
+  # The auto-healing watchdog service
+  autoheal:
+    container_name: agent-autoheal
     depends_on:
-      - litellm
-      - chromadb
+      - service
+    image: willfarrell/autoheal:latest
+    restart: always
+    environment:
+      # Only watch containers with the 'autoheal=true' label
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+    volumes:
+      # Required to monitor other containers and issue restart commands
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   agent-memory:
