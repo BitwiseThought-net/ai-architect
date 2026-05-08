@@ -77,9 +77,8 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # --- UPDATED EMBEDDER CONFIG ---
-    # Adding a unique collection name ensures ChromaDB initializes a fresh 
-    # table using your local Ollama settings, bypassing metadata conflicts.
+    # Unified Local Embedder Configuration
+    # Using a unique collection name to force a clean initialization
     embedder_config = {
         "provider": "ollama",
         "config": {
