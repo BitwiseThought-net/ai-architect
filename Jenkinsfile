@@ -15,15 +15,16 @@ pipeline {
                 withCredentials([file(credentialsId: "${env.REPO_NAME}-env", variable: 'envFile')]) {
                     script {
                         sh "[ -f '${envFile}' ] && cp '${envFile}' .env"
-                        sh "cp ${envFile} .env"
-                        
-                        sh '''if [ -f docker-compose.yml ]; then
-                                docker compose up -d --build
-                              else
-                                exit 0
-                              fi
-                        '''
-                        
+                        sh "sed -i 's/\\r\$//' .env"
+
+                        // 2. GLOBAL FIX: Sanitize all files in the app folder
+                        sh "find agent-app/ -type f -exec sed -i 's/\\r\$//' {} +"
+
+                        // 3. Build and Start
+                        sh "docker compose down" // Ensure old state is gone
+                        sh "docker compose up -d --build"
+
+
                         // 3. Clean up the .env file after deployment (optional but safer)
                         sh "[ -f .env ] && rm .env"
                     }
@@ -32,11 +33,7 @@ pipeline {
         }
     }
     post {
-        success {
-            echo 'Deployment successful!'
-        }
-        failure {
-            echo 'Deployment failed. Check the logs.'
-        }
+        success { echo '🚀 Deployment successful!' }
+        failure { echo '❌ Deployment failed. Check the logs.' }
     }
 }
