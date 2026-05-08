@@ -1,4 +1,11 @@
 import os
+import sys
+
+# --- BOOTSTRAP PATHING ---
+# Ensure /app is the primary search path for 'lib', 'agents', etc.
+# This overrides any environmental PYTHONPATH confusion.
+sys.path.insert(0, '/app')
+
 import json
 import importlib
 import time
