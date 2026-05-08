@@ -77,14 +77,16 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # Unified Local Embedder Configuration
-    # Using a unique collection name to force a clean initialization
+    # Updated Embedder Configuration
+    # We use a timestamp-based collection name to ensure ChromaDB 
+    # initializes a brand new schema using the ollama provider.
+    current_timestamp = int(time.time())
     embedder_config = {
         "provider": "ollama",
         "config": {
             "model": "nomic-embed-text",
             "base_url": "http://ollama:11434",
-            "collection_name": f"agent_smith_{int(time.time())}"
+            "collection_name": f"agent_smith_{current_timestamp}"
         }
     }
 
@@ -102,7 +104,9 @@ def run_mission():
         log_action("Librarian detected. Starting training...")
         try:
             if knowledge_sources:
-                crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
+                # Use a fresh training filename to match the new collection
+                train_file = f"training_{current_timestamp}.pkl"
+                crew.train(n_iterations=1, filename=train_file, inputs={})
                 log_text("Knowledge base synchronized.")
             else:
                 log_text("No knowledge sources found to train on.")
