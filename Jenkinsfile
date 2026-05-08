@@ -18,7 +18,7 @@ pipeline {
                         sh "sed -i 's/\\r\$//' .env"
 
                         // 2. GLOBAL FIX: Sanitize all files in the app folder
-                        sh "find agent-app/ -type f -exec sed -i 's/\\r\$//' {} +"
+                        sh "find . -type f -exec sed -i 's/\\r\$//' {} +"
 
                         // 3. Build and Start
                         sh "docker compose down"
