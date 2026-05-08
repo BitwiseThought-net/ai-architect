@@ -33,24 +33,30 @@ def clear_mission_timeout():
 def get_config_value(key, default=None):
     """
     Reads config.json on demand to allow live updates without restarts.
-    Prioritizes config.json, then Environment Variables, then the provided default.
+    Checks config_mount first (stable directory mount), then the local root,
+    then Environment Variables.
     """
+    # Search paths for configuration files
+    paths = ['config_mount/config.json', 'config.json']
     val = None
-    try:
-        if os.path.exists('config.json'):
-            with open('config.json', 'r') as f:
-                config = json.load(f)
-                if key in config:
-                    val = config[key]
-                else:
-                    val = os.getenv(key)
-        else:
-            val = os.getenv(key)
-    except Exception as e:
-        log_error(f"Error reading config.json: {e}")
+
+    for path in paths:
+        try:
+            if os.path.exists(path):
+                with open(path, 'r') as f:
+                    config = json.load(f)
+                    if key in config:
+                        val = config[key]
+                        break  # Found the value, stop searching paths
+        except Exception as e:
+            # Silent fail for individual path checks to proceed to next option
+            continue
+
+    # Fallback to Environment Variable if not found in JSON files
+    if val is None:
         val = os.getenv(key)
 
-    # Use default if no value was found in JSON or ENV
+    # Use provided default if no value was found in JSON or ENV
     if val is None:
         return default
 
