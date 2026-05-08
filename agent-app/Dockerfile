@@ -1,7 +1,6 @@
 FROM python:3.11-slim
 
 # Install system dependencies for PDF processing, document parsing, and security tools
-# Added libgl1 and libglib2.0-0 for docling support
 RUN apt-get update && apt-get install -y \
     build-essential \
     libmagic-dev \
@@ -17,9 +16,9 @@ WORKDIR /app
 # Copy requirements file first to leverage Docker layer caching
 COPY agent-app/requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
+# --- UPDATED PIP COMMAND ---
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -v -r requirements.txt
 
 # Copy the contents of agent-app into /app
 COPY agent-app/ .
