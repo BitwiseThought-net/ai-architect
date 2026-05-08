@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    options {
+        // Disables concurrent builds and aborts the previous running build
+        disableConcurrentBuilds(abortPrevious: true)
+    }
     stages {
         stage('Setup Variables') {
             steps {
