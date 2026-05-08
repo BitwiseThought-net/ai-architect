@@ -21,8 +21,12 @@ pipeline {
                         sh "find agent-app/ -type f -exec sed -i 's/\\r\$//' {} +"
 
                         // 3. Build and Start
-                        sh "docker compose down" // Ensure old state is gone
-                        sh "docker compose up -d --build"
+//                        sh "docker compose down"
+//                        sh "docker compose up -d --build"
+
+                        sh "docker compose down --remove-orphans"
+                        sh "docker compose build --no-cache service"
+                        sh "docker compose up -d"
 
 
                         // 3. Clean up the .env file after deployment (optional but safer)
