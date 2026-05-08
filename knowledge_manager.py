@@ -1,14 +1,6 @@
 import os
-import sys
-import importlib.util
-
-# Direct path import for logger to bypass ModuleNotFoundError
-spec = importlib.util.spec_from_file_location("logger", "/app/lib/logger.py")
-logger = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(logger)
-log_action, log_text, log_warn, log_error = logger.log_action, logger.log_text, logger.log_warn, logger.log_error
-
 import importlib
+from lib.logger import log_action, log_text, log_warn, log_error
 
 def get_all_knowledge_sources():
     knowledge_dir = "knowledge"
@@ -29,7 +21,7 @@ def get_all_knowledge_sources():
 
     for file in files:
         file_path = os.path.join(knowledge_dir, file)
-        # Extract extension (e.g., '.pdf' -> 'pdf')
+        # Extract extension
         ext = os.path.splitext(file).lower().replace('.', '')
 
         if not ext:
@@ -37,11 +29,8 @@ def get_all_knowledge_sources():
             continue
 
         try:
-            # Dynamically import the loader matching the extension
             loader_module_name = f"loaders.{ext}"
             loader_module = importlib.import_module(loader_module_name)
-
-            # Assumes every loader has a get_source(file_path) function
             source = loader_module.get_source(file_path)
 
             if source:
@@ -58,4 +47,3 @@ def get_all_knowledge_sources():
     log_text(f"Total knowledge sources identified: {len(sources)}")
     log_action("Knowledge sync complete.")
     return sources
-
