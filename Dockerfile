@@ -1,5 +1,7 @@
 FROM python:3.11-slim
 
+ENV PYTHONPATH="/app"
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -10,17 +12,13 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container
+RUN ln -s /usr/local/bin/python3 /usr/bin/python3
+
 WORKDIR /app
 
-# Copy requirements from the root
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Upgrade pip and install dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy all project files from root into /app
 COPY . .
 
 # Sanitize line endings for all Python files
@@ -29,3 +27,6 @@ RUN find . -type f -name "*.py" -print0 | xargs -0 dos2unix && \
 
 # Create necessary persistent and safe directories
 RUN mkdir -p /app/output /app/knowledge /app/.crewai
+
+CMD ["python", "main.py"]
+
