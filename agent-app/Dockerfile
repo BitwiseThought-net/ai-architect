@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 # Install system dependencies for PDF processing, document parsing, and security tools
+# Added libgl1 and libglib2.0-0 for docling support
 RUN apt-get update && apt-get install -y \
     build-essential \
     libmagic-dev \
@@ -13,16 +14,29 @@ RUN apt-get update && apt-get install -y \
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy from the host's agent-app folder into the container's /app
+# Copy requirements file first to leverage Docker layer caching
 COPY agent-app/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the contents of agent-app into /app
-COPY agent-app/ .
 
-# Ensure line endings are fixed for all copied files
+# Copy the contents of agent-app into /app
+#COPY agent-app/ .
+# Explicitly copy all project components to prevent missing directory errors
+COPY agent-app/main.py .
+COPY agent-app/knowledge_manager.py .
+COPY agent-app/config.json .
+COPY agent-app/lib/ ./lib/
+COPY agent-app/agents/ ./agents/
+COPY agent-app/tools/ ./tools/
+COPY agent-app/loaders/ ./loaders/
+COPY agent-app/knowledge/ ./knowledge/
+
+# Ensure all subdirectories are treated as Python packages
+RUN touch lib/__init__.py agents/__init__.py tools/__init__.py loaders/__init__.py
+
+# Normalize line endings to Linux LF
 RUN find . -type f -name "*.py" -print0 | xargs -0 dos2unix && \
     apt-get --purge remove -y dos2unix
 

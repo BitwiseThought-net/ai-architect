@@ -1,4 +1,13 @@
 import os
+import sys
+
+# --- PATH INJECTION FIX ---
+# Forces the current directory into sys.path to ensure 'lib', 'agents',
+# and 'tools' are discoverable regardless of environmental PYTHONPATH masking.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 import json
 import importlib
 import time
@@ -17,6 +26,7 @@ def load_agent_and_tools(agent_config):
             log_warn(f"Tool {t_name} not found.")
 
     try:
+        # Dynamically load the agent module from the /agents folder
         agent_module = importlib.import_module(f"agents.{agent_config['name']}")
         return agent_module.get_agent(tools=all_tools)
     except ImportError:
@@ -31,6 +41,7 @@ def run_mission():
     start_time = time.time()
     while True:
         try:
+            # Check the actual models endpoint to ensure the pull is 100% complete
             response = requests.get("http://agent-litellm:4000/v1/models", timeout=5)
             if response.status_code == 200:
                 models = response.json().get('data', [])
@@ -55,6 +66,7 @@ def run_mission():
         drop_params=True # Forces LiteLLM to ignore unsupported stop sequences
     )
 
+    # --- STEP 3: LOAD CONFIGURATION ---
     with open('config.json', 'r') as f:
         config = json.load(f)
 
@@ -63,10 +75,11 @@ def run_mission():
     tasks_list = []
     has_librarian = False
 
+    # --- STEP 4: INITIALIZE AGENTS AND TASKS ---
     for item in config.get('active_agents', []):
         agent = load_agent_and_tools(item)
         if agent:
-            agent.llm = custom_llm
+            agent.llm = custom_llm # Ensure all agents use the stable config
             agents_list.append(agent)
             if item['name'] == "librarian":
                 has_librarian = True
@@ -78,19 +91,21 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # --- STEP 3: CONFIGURE CREW ---
+    # --- STEP 5: CONFIGURE CREW ---
     crew = Crew(
         agents=agents_list,
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
-        memory=True, # Keeps memory enabled while avoiding complex object logging crashes
+        memory=True, # Telemetry Fix: Keep as simple boolean
         knowledge_sources=knowledge_sources
     )
 
+    # --- STEP 6: EXECUTION ---
     if has_librarian:
         log_action("Librarian detected. Starting training...")
         try:
+            # Training loop with persistence
             crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
             log_text("Knowledge base synchronized via training.")
         except Exception as e:
