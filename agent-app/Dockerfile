@@ -22,16 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 # Copy the contents of agent-app into /app
-#COPY agent-app/ .
-# Explicitly copy all project components to prevent missing directory errors
-COPY agent-app/main.py .
-COPY agent-app/knowledge_manager.py .
-COPY agent-app/config.json .
-COPY agent-app/lib/ ./lib/
-COPY agent-app/agents/ ./agents/
-COPY agent-app/tools/ ./tools/
-COPY agent-app/loaders/ ./loaders/
-COPY agent-app/knowledge/ ./knowledge/
+COPY agent-app/ .
 
 # Ensure all subdirectories are treated as Python packages
 RUN touch lib/__init__.py agents/__init__.py tools/__init__.py loaders/__init__.py
