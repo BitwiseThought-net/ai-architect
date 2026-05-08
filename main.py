@@ -26,7 +26,7 @@ def load_agent_and_tools(agent_config):
 def run_mission():
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
-
+    
     start_time = time.time()
     while True:
         try:
@@ -38,7 +38,7 @@ def run_mission():
                     break
         except Exception:
             pass
-
+        
         if time.time() - start_time > 600:
             log_error(f"Timeout: {model_name} did not become ready in time.")
             return
@@ -69,7 +69,7 @@ def run_mission():
             agents_list.append(agent)
             if item['name'] == "librarian":
                 has_librarian = True
-
+            
             tasks_list.append(Task(
                 description=item.get('task_description'),
                 expected_output=item.get('expected_output'),
@@ -77,12 +77,15 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # Forced Local Embedder
+    # --- UPDATED EMBEDDER CONFIG ---
+    # Adding a unique collection name ensures ChromaDB initializes a fresh 
+    # table using your local Ollama settings, bypassing metadata conflicts.
     embedder_config = {
         "provider": "ollama",
         "config": {
             "model": "nomic-embed-text",
-            "base_url": "http://ollama:11434"
+            "base_url": "http://ollama:11434",
+            "collection_name": f"agent_smith_{int(time.time())}"
         }
     }
 
@@ -91,7 +94,7 @@ def run_mission():
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
-        memory=False, # Set to False to bypass the 'Invalid type Memory' telemetry bug
+        memory=False, 
         knowledge_sources=knowledge_sources,
         embedder=embedder_config
     )
