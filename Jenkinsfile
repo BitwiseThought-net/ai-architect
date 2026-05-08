@@ -20,12 +20,22 @@ pipeline {
                     script {
                         sh "[ -f '${envFile}' ] && cp '${envFile}' .env"
                         sh "sed -i 's/\\r\$//' .env"
+
+                        // --- FIX FOR MOUNT ERROR ---
+                        // 1. Remove accidental directories created by failed Docker mounts
+                        sh "if [ -d config.json ]; then rm -rf config.json; fi"
+                        sh "if [ -d team.json ]; then rm -rf team.json; fi"
                         
-                        sh '''if [ -f docker-compose.yml ]; then
-                                docker compose up -d --build
-                              else
-                                exit 0
-                              fi
+                        // 2. Ensure files exist so Docker mounts them correctly as files
+                        sh "if [ ! -f config.json ]; then cp config.json.example config.json || touch config.json; fi"
+                        sh "if [ ! -f team.json ]; then touch team.json; fi"
+
+                        sh '''
+                        if [ -f docker-compose.yml ]; then
+                            docker compose up -d --build
+                        else
+                            exit 0
+                        fi
                         '''
                         
                         // 3. Clean up the .env file after deployment (optional but safer)
