@@ -80,7 +80,6 @@ services:
     depends_on:
       - litellm
       - chromadb
-    command: ["python", "-u", "-m", "main.py"]
 
 volumes:
   agent-memory:
