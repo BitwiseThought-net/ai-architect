@@ -46,7 +46,6 @@ def run_mission():
         log_text(f"Still waiting for {model_name} to finish pulling...")
         time.sleep(15)
 
-    # Standardize LLM for Agents
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
@@ -78,14 +77,12 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # --- CRITICAL FIX FOR 401 ERROR ---
-    # Define the embedder specifically for the Crew's knowledge system
+    # --- UPDATED EMBEDDER CONFIG ---
     embedder_config = {
-        "provider": "openai",
+        "provider": "ollama",
         "config": {
             "model": "nomic-embed-text",
-            "api_key": "sk-local-1234",
-            "base_url": "http://agent-litellm:4000/v1"
+            "base_url": "http://ollama:11434"
         }
     }
 
@@ -96,13 +93,15 @@ def run_mission():
         verbose=True,
         memory=True, 
         knowledge_sources=knowledge_sources,
-        embedder=embedder_config  # This forces local embeddings
+        embedder=embedder_config
     )
 
     if has_librarian:
         log_action("Librarian detected. Starting training...")
         try:
             if knowledge_sources:
+                # We add a delay to ensure ChromaDB is ready for the first upsert
+                time.sleep(5) 
                 crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
                 log_text("Knowledge base synchronized via training.")
             else:
@@ -118,4 +117,3 @@ def run_mission():
 
 if __name__ == "__main__":
     run_mission()
-
