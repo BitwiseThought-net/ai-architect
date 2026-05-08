@@ -8,8 +8,7 @@ services:
     tty: true
     volumes:
       - agent-memory:/app/.crewai
-      - ./config.json:/app/config.json
-      - ./team.json:/app/team.json
+      - .:/app/config_mount:ro
       - ./output:/app/output
       - ./knowledge:/app/knowledge
     working_dir: /app

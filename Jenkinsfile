@@ -21,19 +21,20 @@ pipeline {
                         sh "[ -f '${envFile}' ] && cp '${envFile}' .env"
                         sh "sed -i 's/\\r\$//' .env"
 
-                        // --- FIX FOR MOUNT ERROR ---
-                        // 1. Remove accidental directories created by failed Docker mounts
-                        sh "if [ -d config.json ]; then rm -rf config.json; fi"
-                        sh "if [ -d team.json ]; then rm -rf team.json; fi"
+                        // --- PREPARE CONFIGURATION FILES ---
+                        // Ensure config.json exists (using example as template if available)
+                        sh "if [ ! -f config.json ]; then if [ -f config.json.example ]; then cp config.json.example config.json; else touch config.json; fi; fi"
                         
-                        // 2. Ensure files exist so Docker mounts them correctly as files
-                        sh "if [ ! -f config.json ]; then cp config.json.example config.json || touch config.json; fi"
+                        // Ensure team.json exists
                         sh "if [ ! -f team.json ]; then touch team.json; fi"
 
                         sh '''
                         if [ -f docker-compose.yml ]; then
+                            # We use down to ensure old "stale" file-mount handles are released
+                            docker compose down
                             docker compose up -d --build
                         else
+                            echo "No docker-compose.yml found, skipping..."
                             exit 0
                         fi
                         '''
