@@ -14,6 +14,7 @@ def get_all_knowledge_sources():
 
     log_action("Scanning /knowledge directory for new sources...")
     
+    # Check again just in case the creation failed
     if not os.path.exists(knowledge_dir):
         return sources
 
@@ -28,8 +29,10 @@ def get_all_knowledge_sources():
         if os.path.isdir(file_path):
             continue
 
-        # Correctly extract extension from the tuple returned by splitext
-        _, ext_with_dot = os.path.splitext(file)
+        # os.path.splitext returns (root, ext) tuple. 
+        # We explicitly unpack it to ensure we have a string for the extension.
+        split_name = os.path.splitext(file)
+        ext_with_dot = split_name[1]
         ext = ext_with_dot.lower().replace('.', '')
         
         if not ext:
@@ -41,7 +44,7 @@ def get_all_knowledge_sources():
             loader_module = importlib.import_module(loader_module_name)
             
             # Pass the file_path directly. 
-            # THE LOADER MUST NOT PREPEND 'knowledge/' AGAIN.
+            # Standardized loaders now use os.path.basename to prevent path doubling.
             source = loader_module.get_source(file_path)
             
             if source:

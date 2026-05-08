@@ -26,7 +26,7 @@ def load_agent_and_tools(agent_config):
 def run_mission():
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
-
+    
     start_time = time.time()
     while True:
         try:
@@ -38,7 +38,7 @@ def run_mission():
                     break
         except Exception:
             pass
-
+        
         if time.time() - start_time > 600:
             log_error(f"Timeout: {model_name} did not become ready in time.")
             return
@@ -69,7 +69,7 @@ def run_mission():
             agents_list.append(agent)
             if item['name'] == "librarian":
                 has_librarian = True
-
+            
             tasks_list.append(Task(
                 description=item.get('task_description'),
                 expected_output=item.get('expected_output'),
@@ -82,7 +82,7 @@ def run_mission():
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
-        memory=True,
+        memory=True, 
         knowledge_sources=knowledge_sources
     )
 

@@ -1,4 +1,6 @@
 from crewai.knowledge.source.csv_knowledge_source import CSVKnowledgeSource
+import os
 
-def get_source(file_paths):
-    return CSVKnowledgeSource(file_paths=[file_path])
+def get_source(file_path):
+    filename = os.path.basename(file_path)
+    return CSVKnowledgeSource(file_paths=[filename])
