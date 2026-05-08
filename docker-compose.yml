@@ -21,7 +21,7 @@ services:
       - litellm
       - chromadb
     labels:
-      autoheal=true
+      autoheal: true
 
   ollama:
     container_name: agent-ollama
@@ -42,7 +42,7 @@ services:
               count: 1
               capabilities: [gpu]
     labels:
-      autoheal=true
+      autoheal: true
 
   litellm:
     container_name: agent-litellm
@@ -58,7 +58,7 @@ services:
     depends_on:
       - ollama
     labels:
-      autoheal=true
+      autoheal: true
 
   chromadb:
     container_name: agent-chromadb
@@ -72,7 +72,7 @@ services:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
     labels:
-      autoheal=true
+      autoheal: true
 
   openwebui:
     container_name: agent-open-webui
@@ -89,7 +89,7 @@ services:
     depends_on:
       - ollama
     labels:
-      autoheal=true
+      autoheal: true
 
 
   # The auto-healing watchdog service
@@ -106,7 +106,7 @@ services:
       # Required to monitor other containers and issue restart commands
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      autoheal=true
+      autoheal: true
 
 volumes:
   agent-memory:
