@@ -3,9 +3,14 @@ import json
 import importlib
 import time
 import requests
+import signal
 from crewai import Crew, Task, Process, LLM
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
+
+# --- TIMEOUT HANDLER ---
+def timeout_handler(signum, frame):
+    raise TimeoutError("Mission execution timed out.")
 
 def load_agent_and_tools(agent_config):
     all_tools = []
@@ -24,6 +29,12 @@ def load_agent_and_tools(agent_config):
         return None
 
 def run_mission():
+    # --- LOAD PARAMETERS FROM ENV ---
+    # These are now coming directly from the docker-compose.yml environment section
+    max_retries = int(os.getenv("MAX_RETRIES", 3))
+    retry_delay_seconds = int(os.getenv("RETRY_DELAY_SECONDS", 10))
+    mission_timeout_seconds = int(os.getenv("MISSION_TIMEOUT_SECONDS", 1800))
+
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
     
@@ -49,7 +60,7 @@ def run_mission():
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
-        api_key="sk-local-1234",
+        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234"),
         temperature=0.3,
         max_tokens=4096
     )
@@ -77,14 +88,13 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # Unified Local Embedder Configuration
-    # Using a unique collection name to force a clean initialization
+    current_timestamp = int(time.time())
     embedder_config = {
         "provider": "ollama",
         "config": {
             "model": "nomic-embed-text",
             "base_url": "http://ollama:11434",
-            "collection_name": f"agent_smith_{int(time.time())}"
+            "collection_name": f"agent_smith_{current_timestamp}"
         }
     }
 
@@ -110,10 +120,27 @@ def run_mission():
             log_warn(f"Training loop skipped: {e}")
 
     log_action("Starting mission kickoff...")
-    try:
-        return crew.kickoff()
-    except Exception as e:
-        log_error(f"Crew execution failed: {e}")
+    for attempt in range(max_retries):
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(mission_timeout_seconds)
+        
+        try:
+            result = crew.kickoff()
+            signal.alarm(0) 
+            return result
+        except Exception as e:
+            signal.alarm(0) 
+            error_msg = str(e)
+            log_error(f"Attempt {attempt + 1} failed: {error_msg}")
+            
+            if attempt < max_retries - 1:
+                log_warn(f"Retrying in {retry_delay_seconds} seconds...")
+                time.sleep(retry_delay_seconds)
+            else:
+                log_error("Max retries reached. Container will remain idle.")
+                while True:
+                    time.sleep(3600) 
 
 if __name__ == "__main__":
     run_mission()
+

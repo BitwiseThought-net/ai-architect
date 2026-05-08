@@ -17,6 +17,9 @@ services:
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
       - CHROMA_API_BASE=http://chromadb:8000
       - CREWAI_STORAGE_DIR=/app/.crewai
+      - MAX_RETRIES=3
+      - RETRY_DELAY_SECONDS=10
+      - MISSION_TIMEOUT_SECONDS=1800
     depends_on:
       - litellm
       - chromadb
