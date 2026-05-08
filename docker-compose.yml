@@ -68,6 +68,7 @@ services:
     volumes:
       - ./agent-app:/app
       - agent-memory:/app/.crewai
+    working_dir: /app
     env_file:
       - .env
     environment:

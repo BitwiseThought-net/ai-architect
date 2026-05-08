@@ -1,2 +1,2 @@
 #!/bin/bash
-docker exec -it agent-smith python ingest.py
+docker exec -it $(basename "$PWD") python ingest.py
