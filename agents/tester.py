@@ -1,11 +1,14 @@
 from crewai import Agent, LLM
 import os
 
-def get_agent(tools=None):
+
+def get_agent(tools=None, model_name=None):
+    # Fallback to a default if no specific model is passed
+    target_model = model_name or os.getenv("MODEL_NAME", "codellama:latest")
     local_llm = LLM(
-        model=f"ollama/{os.getenv('MODEL_NAME')}",
+        model=f"ollama/{target_model}",
         base_url="http://agent-litellm:4000/v1",
-        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234")
+        api_key="sk-local-1234"
     )
 
     return Agent(
