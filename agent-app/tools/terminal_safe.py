@@ -1,6 +1,6 @@
 import os
 import subprocess
-from crewai_tools import tool
+from crewai.tools import tool
 
 @tool("safe_terminal_exec")
 def safe_terminal_exec(command: str):
@@ -27,14 +27,11 @@ def safe_terminal_exec(command: str):
             cwd=safe_dir,
             capture_output=True,
             text=True,
-            timeout=30 # Prevent infinite loops
+            timeout=30  # Prevent infinite loops
         )
-
         output = result.stdout if result.stdout else ""
         errors = result.stderr if result.stderr else ""
-
         return f"--- Command Output ---\n{output}\n--- Errors ---\n{errors}"
-
     except Exception as e:
         return f"❌ Execution failed: {str(e)}"
 
