@@ -15,7 +15,13 @@ pipeline {
             }
         }
         stage('Deploy') {
-            when { branch 'main' }
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                }
+            }
             steps {
                 withCredentials([
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
