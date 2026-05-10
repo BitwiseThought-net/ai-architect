@@ -1,7 +1,9 @@
 pipeline {
     agent any
+    triggers {
+        githubPush()
+    }
     options {
-        // Disables concurrent builds and aborts the previous running build
         disableConcurrentBuilds(abortPrevious: true)
     }
     triggers {
@@ -17,18 +19,17 @@ pipeline {
         stage('Setup Variables') {
             steps {
                 script {
-                    // Explicitly assign to the env object so withCredentials can see it
                     env.REPO_NAME = env.GIT_URL.tokenize('/').last().split("\\.")[0]
                 }
             }
         }
         stage('Deploy') {
+            when { branch 'main' }
             steps {
                 withCredentials([
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
                 ]) {
                     script {
-                        // --- PREPARE WORKSPACE ---
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
 
