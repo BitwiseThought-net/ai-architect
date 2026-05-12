@@ -22,7 +22,6 @@ from crewai.knowledge.source.crew_docling_source import CrewDoclingSource
 from crewai.knowledge.source.json_knowledge_source import JSONKnowledgeSource
 from crewai.knowledge.source.excel_knowledge_source import ExcelKnowledgeSource
 from crewai.knowledge.source.text_file_knowledge_source import TextFileKnowledgeSource
-from crewai.knowledge.source.xml_knowledge_source import XMLKnowledgeSource
 
 # --- CORE BINDINGS ---
 Agent = NativeAgent
@@ -60,20 +59,17 @@ class NativeShellInterpreter:
 EXECTool = NativeShellInterpreter
 
 # --- INLINE SECURE SEARCH FALLBACK ---
-# Bypasses version mismatches by executing requests against DuckDuckGo's HTML fallback endpoint
 class NativeDuckDuckGoSearch:
     def __init__(self):
         self.name = "duckduckgo_search"
         self.description = "Search the web for real-time technical documentation, requirements, and standards."
 
     def _run(self, query: str) -> str:
-        """Executes an unauthenticated search query pass against the public index."""
         url = "duckduckgo.com"
         headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0"}
         try:
             response = requests.post(url, data={"q": query}, headers=headers, timeout=10)
             if response.status_code == 200:
-                # Returns raw scraped context string elements for LLM semantic processing
                 return response.text[:8000]
             return f"⚠️ Search index rejected query with status: {response.status_code}"
         except Exception as e:
@@ -82,10 +78,12 @@ class NativeDuckDuckGoSearch:
 DuckDuckGoSearchTool = NativeDuckDuckGoSearch
 
 # --- KNOWLEDGE LOADER MAPPINGS ---
+# Centralize framework-specific imports inside a neat class mapping object
 class Knowledge:
     CSV = CSVKnowledgeSource
     Docling = CrewDoclingSource
     JSON = JSONKnowledgeSource
     Excel = ExcelKnowledgeSource
     TextFile = TextFileKnowledgeSource
-    XML = XMLKnowledgeSource
+    # FIXED: Re-mapped XML to the native structural Docling parser class to stop missing module errors
+    XML = CrewDoclingSource
