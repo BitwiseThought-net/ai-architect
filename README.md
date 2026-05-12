@@ -33,8 +33,8 @@ To ensure system integrity, **The Architect** employs a "Safe-by-Design" approac
 ---
 
 ## 🛠 Debugging & Interaction
-- **Live Logs**: View agent thoughts in real-time: `docker logs -f the-architect`.
-- **Shell Access**: To inspect the container environment: `docker exec -it the-architect /bin/bash`.
+- **Live Logs**: View agent thoughts in real-time: `docker logs -f ai-architect`.
+- **Shell Access**: To inspect the container environment: `docker exec -it ai-architect /bin/bash`.
 - **Web UI**: Access the Open WebUI at `http://localhost:3011` to chat with your models directly outside of the agent workflow.
 
 ---
@@ -60,7 +60,7 @@ To ensure system integrity, **The Architect** employs a "Safe-by-Design" approac
 1. **Clone the repository:**
    ```bash
    git clone https://github.com
-   cd the-architect
+   cd ai-architect
    ```
 
 2. **Initialize Configuration:**
@@ -150,4 +150,5 @@ This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-Sha
 
 
 *"Ergo, the concordance of thought is established."*
+
 

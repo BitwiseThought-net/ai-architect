@@ -7,7 +7,7 @@ def get_agent(tools=None, model_name=None):
     target_model = model_name or get_config_value("MODEL_NAME", "mistral:latest")
     local_llm = LLM(
         model=f"ollama/{target_model}",
-        base_url=get_config_value("LITELLM_URL", "http://agent-litellm:4000/v1"),
+        base_url=get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1"),
         api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234"),
         temperature=float(get_config_value("TEMPERATURE", 0.3)),
         max_tokens=4096

@@ -1,37 +1,31 @@
 pipeline {
     agent any
-    triggers {
-        githubPush()
-    }
     options {
+        // Disables concurrent builds and aborts the previous running build
         disableConcurrentBuilds(abortPrevious: true)
     }
     stages {
         stage('Setup Variables') {
             steps {
                 script {
+                    // Explicitly assign to the env object so withCredentials can see it
                     env.REPO_NAME = env.GIT_URL.tokenize('/').last().split("\\.")[0]
                 }
             }
         }
         stage('Deploy') {
-            when {
-                anyOf {
-                    branch 'main'
-                    expression { env.GIT_BRANCH == 'origin/main' }
-                    expression { env.GIT_BRANCH == 'main' }
-                }
-            }
             steps {
                 withCredentials([
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
                 ]) {
                     script {
+                        // --- PREPARE PLUGINS DIRECTORY ---
+                        // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
 
-                        sh "[ -f requirements.txt ] && sed -i 's/\\r\$//' requirements.txt"
-                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env && sed -i 's/\\r\$//' .env"
+                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
+                        sh "sed -i 's/\\r\$//' .env"
 
                         sh '''
                         if [ -f docker-compose.yml ]; then
@@ -43,7 +37,8 @@ pipeline {
                             exit 0
                         fi
                         '''
-
+                        
+                        // 3. Clean up the .env file after deployment (optional but safer)
                         sh "[ -f .env ] && rm .env"
                     }
                 }

@@ -6,6 +6,7 @@ import requests
 import pkgutil
 import signal
 import plugins  # Requires plugins/__init__.py to exist
+from pathlib import Path
 from crewai import Crew, Task, Process, LLM
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
@@ -27,7 +28,7 @@ def load_agent_and_tools(agent_config, llm):
             tool_module = importlib.import_module(f"tools.{t_name}")
             all_tools.extend(tool_module.get_tools())
         except ImportError:
-            log_warn(f"Tool {t_name} not found in tools folder.")
+            log_warn(f"Tool {t_name} not found in tools folder at {Path.cwd()}/tools.")
 
     # 2. DYNAMIC JSON PLUGIN INJECTION (Legacy/Migration support)
     active_json_plugins = get_active_plugins()
@@ -107,7 +108,7 @@ def run_mission():
     
     # 1. Infrastructure Setup (Pulled live from config.json)
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
-    litellm_url = get_config_value("LITELLM_URL", "http://agent-litellm:4000/v1")
+    litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     
     try:
         wait_for_llm(litellm_url, model_name)
@@ -125,7 +126,7 @@ def run_mission():
     # 2. Team Assembly (Resilient to empty team.json)
     team_file = get_config_value("TEAM_CONFIG", "team.json")
     if not os.path.exists(team_file):
-        log_error(f"Mission aborted: {team_file} not found."); return
+        log_error(f"Mission aborted: {team_file} not found at {Path.cwd()}."); return
 
     try:
         with open(team_file, 'r') as f:
