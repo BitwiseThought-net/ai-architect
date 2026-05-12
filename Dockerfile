@@ -17,8 +17,11 @@ RUN ln -s /usr/local/bin/python3 /usr/bin/python3
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+# Upgrade core tools and explicitly handle OpenTelemetry + Pydantic dependencies cleanly
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir "opentelemetry-api==1.28.0" "opentelemetry-sdk==1.28.0" "pydantic==2.10.6" --break-system-packages && \
     pip install --no-cache-dir -r requirements.txt --use-deprecated=legacy-resolver --break-system-packages
+
 
 COPY . .
 
