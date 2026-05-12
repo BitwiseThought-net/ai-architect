@@ -8,7 +8,7 @@ from crewai import (
     Process as NativeProcess,
     LLM as NativeLLM
 )
-from crewai.tools import tool as native_tool
+from crewai.tools import tool as native_tool, BaseTool # FIXED: Added BaseTool import
 
 # Import only the stable core file interaction tools
 from crewai_tools import (
@@ -36,12 +36,13 @@ FileReadTool = NativeFileReadTool
 FileWriterTool = NativeFileWriterTool
 
 # --- INLINE SECURE SHELL EXECUTION FALLBACK ---
-class NativeShellInterpreter:
-    def __init__(self):
-        self.name = "terminal_execution_tool"
-        self.description = "Executes arbitrary shell commands inside the application workspace container environment."
+# FIXED: Subclassed BaseTool to satisfy Pydantic structure compilation constraints
+class NativeShellInterpreter(BaseTool):
+    name: str = "terminal_execution_tool"
+    description: str = "Executes arbitrary shell commands inside the application workspace container environment."
 
     def _run(self, command: str) -> str:
+        """Executes terminal parameters safely and returns output packages."""
         try:
             res = subprocess.run(
                 command,
@@ -59,12 +60,13 @@ class NativeShellInterpreter:
 EXECTool = NativeShellInterpreter
 
 # --- INLINE SECURE SEARCH FALLBACK ---
-class NativeDuckDuckGoSearch:
-    def __init__(self):
-        self.name = "duckduckgo_search"
-        self.description = "Search the web for real-time technical documentation, requirements, and standards."
+# FIXED: Subclassed BaseTool to satisfy Pydantic structure compilation constraints
+class NativeDuckDuckGoSearch(BaseTool):
+    name: str = "duckduckgo_search"
+    description: str = "Search the web for real-time technical documentation, requirements, and standards."
 
     def _run(self, query: str) -> str:
+        """Executes an unauthenticated search query pass against the public index."""
         url = "duckduckgo.com"
         headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0"}
         try:
@@ -78,12 +80,11 @@ class NativeDuckDuckGoSearch:
 DuckDuckGoSearchTool = NativeDuckDuckGoSearch
 
 # --- KNOWLEDGE LOADER MAPPINGS ---
-# Centralize framework-specific imports inside a neat class mapping object
 class Knowledge:
     CSV = CSVKnowledgeSource
     Docling = CrewDoclingSource
     JSON = JSONKnowledgeSource
     Excel = ExcelKnowledgeSource
     TextFile = TextFileKnowledgeSource
-    # FIXED: Re-mapped XML to the native structural Docling parser class to stop missing module errors
     XML = CrewDoclingSource
+
