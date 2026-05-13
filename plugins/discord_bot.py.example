@@ -40,7 +40,7 @@ def send_direct_message(message: str) -> bool:
     if not token or "YOUR_DISCORD_BOT_TOKEN" in token or not channel_id or "YOUR_CHANNEL_ID" in channel_id:
         return False
 
-    url = f"discord.com{channel_id}/messages"
+    url = f"https://discord.com/{channel_id}/messages"
     headers = {
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json"
@@ -65,7 +65,7 @@ def discord_interaction(message: str):
     if not token or "YOUR_DISCORD_BOT_TOKEN" in token:
         return "❌ Plugin Error: Discord Bot Token is not configured in discord_bot.py."
 
-    url = f"discord.com{channel_id}/messages"
+    url = f"https://discord.com/{channel_id}/messages"
     headers = {
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json"
