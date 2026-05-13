@@ -20,7 +20,7 @@ COPY requirements.txt .
 
 # --- CRITICAL RESOLUTION PHASE ---
 # 1. Upgrade baseline packaging ecosystem binaries
-# 2. Pre-install the pinned telemetry/typing baseline to break version loops 
+# 2. Pre-install the pinned telemetry, typing, and modern langchain baseline to break version loops 
 # 3. Compile the comprehensive multi-framework requirements sheet using the legacy architecture
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
@@ -28,6 +28,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         "opentelemetry-api==1.25.0" \
         "opentelemetry-sdk==1.25.0" \
         "opentelemetry-semantic-conventions==0.46b0" \
+        "langchain-core>=0.3.0" \
         --break-system-packages && \
     pip install --no-cache-dir -r requirements.txt --use-deprecated=legacy-resolver --break-system-packages
 
