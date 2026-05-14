@@ -15,7 +15,7 @@ def validate_loaders(knowledge_files):
 
     missing_loaders = set()
     for file in knowledge_files:
-#        if os.path.isdir(os.path.join("knowledge", file)): continue
+        if os.path.isdir(os.path.join("knowledge", file)): continue
         ext = os.path.splitext(file)[1].lower().replace('.', '')
         if not ext: continue
 
@@ -53,7 +53,8 @@ def get_all_knowledge_sources():
 
         try:
             loader_module = importlib.import_module(f"loaders.{ext}")
-            source = loader_module.get_source(file_path)
+#            source = loader_module.get_source(file_path)
+            source = loader_module.get_source(file)
             if source:
                 sources.append(source)
                 log_text(f"Successfully loaded {file} using '{ext}' loader.")

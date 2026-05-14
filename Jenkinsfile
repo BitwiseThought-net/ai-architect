@@ -19,7 +19,8 @@ pipeline {
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET'),
                     file(credentialsId: "${env.REPO_NAME}-team-json", variable: 'TEAM_JSON'),
                     file(credentialsId: "${env.REPO_NAME}-config-json", variable: 'CONFIG_JSON'),
-                    file(credentialsId: "${env.REPO_NAME}-plugins-discord-bot-py", variable: 'DISCORD_BOT_PY')
+                    file(credentialsId: "${env.REPO_NAME}-plugins-discord-bot-py", variable: 'DISCORD_BOT_PY'),
+                    file(credentialsId: "${env.REPO_NAME}-file-1", variable: 'FILE_1')
                 ]) {
                     script {
                         // --- PREPARE PLUGINS DIRECTORY ---
@@ -30,9 +31,15 @@ pipeline {
                         sh "[ -f '${TEAM_JSON}' ] && cp '${TEAM_JSON}' team.json"
                         sh "[ -f '${CONFIG_JSON}' ] && cp '${CONFIG_JSON}' config.json"
                         sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
+
                         sh "pwd"
+
                         sh "mkdir -p plugins"
                         sh "cp '${DISCORD_BOT_PY}' plugins/discord_bot.py"
+
+                        sh "mkdir -p knowledge"
+                        sh "cp '${FILE_1}' knowledge/Python\ Machine\ Learning\ Second\ Edition.pdf"
+
                         sh "sed -i 's/\\r\$//' .env"
 
                         sh '''
