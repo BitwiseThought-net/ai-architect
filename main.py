@@ -169,16 +169,17 @@ def run_mission():
     active_agents = team_data.get('active_agents', [])
     
     log_action("Starting hot-swappable step-by-step hybrid agent execution pipeline...")
-    
-    # CONTEXT MEMORY: Holds sequential text history across alternative backend platforms
     running_context = ""
 
     for idx, item in enumerate(active_agents):
         update_heartbeat()
         agent_name = item['name']
-        output_channel = item.get("output_channel", "log").lower().strip()
         
-        # Instantiate agent fresh for this explicit task block step
+        # FIXED: Extract outputs as a structured list format; default to ["log"] if missing
+        output_channels = item.get("output", ["log"])
+        if isinstance(output_channels, str):
+            output_channels = [output_channels]
+        
         agent, current_layer = load_agent_and_tools(item, None)
         if not agent or not current_layer:
             log_error(f"Skipping task step for {agent_name}: Initialization error.")
@@ -195,18 +196,15 @@ def run_mission():
             expected_output = "Provide complete terminal request output summary package."
             log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name}")
 
-        # Inject execution baseline context history directly into task definitions
         if running_context:
             task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
 
-        # Initialize the specific factory task block 
         task_instance = current_layer.Task(
             description=task_description,
             expected_output=expected_output,
             agent=agent
         )
         
-        # Compile an isolated task crew container to process this single standalone phase step
         step_crew = current_layer.Crew(
             agents=[agent],
             tasks=[task_instance],
@@ -217,43 +215,47 @@ def run_mission():
         
         set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
         try:
-            # Execute step pass and extract raw string response output
             step_result = str(step_crew.kickoff())
             clear_mission_timeout()
             
-            # Append output context logs seamlessly for subsequent agents in the workflow loop
             running_context += f"\n\n--- Output from Agent: {agent_name} ---\n{step_result}"
             
-            # --- HOT-SWAPPABLE OUTPUT ROUTING GATEWAY ---
-            if output_channel == "discord":
-                try:
-                    import plugins.discord_bot as discord_plugin
-                    log_text(f"📬 Diverting {agent_name} output string to Discord Bot Channel...")
-                    
-                    # Ensure name prepending protocol rules are honored cleanly on the text segment
-                    formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
-                    
-                    success = discord_plugin.send_direct_message(formatted_msg)
-                    if success:
-                        log_text(f"✅ Directed message delivered cleanly to Discord API interface.")
-                    else:
-                        log_warn("⚠️ Discord routing failed: Token unconfigured or channel unreachable. Falling back to stdout.")
-                        print(f"\n[FALLBACK STDOUT] {formatted_msg}\n")
-                except Exception as plugin_err:
-                    log_error(f"Failed loading Discord module hook: {plugin_err}")
-                    print(f"\n[FALLBACK STDOUT] {step_result}\n")
-            else:
-                # Default behavior: Output response string transparently to console logs
-                log_text(f"📋 Logging response for {agent_name} to internal stdout:")
-                print(f"\n--- {agent_name} Final Response ---\n{step_result}\n---------------------------\n")
-                
-        except Exception as step_error:
-            clear_mission_timeout()
-            log_error(f"❌ Critical failure on step executing agent {agent_name}: {step_error}")
+            # Formatted prefix constraint string
+            formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
             
-            # Break workflow or retry depending on fault-tolerance config boundaries
+            # FIXED: Loop through each configured channel destination to broadcast status text
+            for channel in output_channels:
+                channel_token = str(channel).lower().strip()
+                
+                if channel_token == "discord":
+                    try:
+                        import plugins.discord_bot as discord_plugin
+                        log_text(f"📬 Broadcasting {agent_name} output to Discord Bot Channel...")
+                        success = discord_plugin.send_direct_message(formatted_msg)
+                        if not success:
+                            log_warn(f"⚠️ Discord delivery failed for {agent_name}; check token configurations.")
+                    except Exception as err:
+                        log_error(f"Failed loading Discord module hook: {err}")
+                        
+                elif channel_token == "webhook":
+                    try:
+                        import plugins.webhook_notifications as webhook_plugin
+                        log_text(f"📢 Broadcasting {agent_name} output to Webhook Notification Channel...")
+                        # Map the direct call sequence signature to the underlying tool logic execution pass
+                        webhook_res = webhook_plugin.send_notification._func(formatted_msg)
+                        log_text(f"Response from Webhook node: {webhook_res}")
+                    except Exception as err:
+                        log_error(f"Failed executing Webhook notification hub: {err}")
+                        
+                elif channel_token == "log":
+                    # Output response string transparently to console logs
+                    log_text(f"📋 Logging response for {agent_name} to internal stdout:")
+                    print(f"\n--- {agent_name} Final Response ---\n{step_result}\n---------------------------\n")
+                    
+        except Exception as e:
+            clear_mission_timeout()
+            log_error(f"❌ Critical failure on step executing agent {agent_name}: {e}")
             if int(get_config_value("MAX_RETRIES", 3)) <= 1:
-                log_error("Max retries exhausted on step execution. Halting mission loop.")
                 while True: update_heartbeat(); time.sleep(60)
 
     log_action("All steps inside the hybrid multi-framework pipeline completed successfully.")
