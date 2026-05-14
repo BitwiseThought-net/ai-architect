@@ -7,13 +7,13 @@ INFO = {
     "instructions": [
         "1. Go to Discord Developer Portal (https://discord.com).",
         "2. Create 'New Application' named Agent-Smith.",
-        "3. Go to 'Bot' tab: Reset/Copy Token into 'bot_token' in SETTINGS below.",
+        "3. Go to 'Bot' tab: Reset/Copy Token into 'BOT_TOKEN' in SETTINGS below.",
         "4. Enable 'Message Content Intent' under Privileged Gateway Intents.",
         "5. Go to 'OAuth2' -> 'URL Generator': Select scopes 'bot' and 'applications.commands'.",
         "6. Select Permissions: 'Send Messages', 'Read Message History', 'Use Slash Commands'.",
         "7. Use generated URL to invite the bot to your server.",
         "8. Enable Developer Mode in Discord (User Settings -> Advanced).",
-        "9. Right-click Server for 'server_id' and target Channel for 'channel_id'."
+        "9. Right-click Server for 'SERVER_ID' and target Channel for 'CHANNEL_ID'."
     ]
 }
 
@@ -30,13 +30,17 @@ def _send_msg(message: str) -> bool:
     """
     Centralized communication routing endpoint helper.
     Priority 1: Check local SETTINGS dictionary context first.
-    Priority 2: Fall back dynamically to centralized get_config_value matrix lookups.
+    Priority 2: Fall back dynamically to nested UPPERCASE DISCORD_BOT_SETTINGS maps in config.json.
     """
+    # FIXED: Pull the uppercase configuration sub-dictionary object baseline
+    bot_settings = get_config_value("DISCORD_BOT_SETTINGS", {})
+
     # 1. Resolve Bot Token
     BOT_TOKEN = SETTINGS.get("BOT_TOKEN")
     print(f"A: BOT_TOKEN:{BOT_TOKEN}.")
     if not BOT_TOKEN:
-        BOT_TOKEN = get_config_value("BOT_TOKEN")
+        # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
+        BOT_TOKEN = bot_settings.get("BOT_TOKEN") if isinstance(bot_settings, dict) else None
     if not BOT_TOKEN:
         return False
 
@@ -44,7 +48,8 @@ def _send_msg(message: str) -> bool:
     SERVER_ID = SETTINGS.get("SERVER_ID")
     print(f"B: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}")
     if not SERVER_ID:
-        SERVER_ID = get_config_value("SERVER_ID")
+        # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
+        SERVER_ID = bot_settings.get("GUILD_ID") if isinstance(bot_settings, dict) else None
     if not SERVER_ID:
         return False
 
@@ -52,14 +57,17 @@ def _send_msg(message: str) -> bool:
     CHANNEL_ID = SETTINGS.get("CHANNEL_ID")
     print(f"C: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
     if not CHANNEL_ID:
-        CHANNEL_ID = get_config_value("CHANNEL_ID")
+        # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
+        CHANNEL_ID = bot_settings.get("TARGET_CHANNEL_ID") if isinstance(bot_settings, dict) else None
     if not CHANNEL_ID:
         return False
 
     print(f"D: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
-    # VERIFIED CORRECT REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
+
+    # MANDATORY REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
     url = f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages"
     print(f"url:[{url}]")
+
     headers = {
         "Authorization": f"Bot {BOT_TOKEN}",
         "Content-Type": "application/json"
@@ -85,7 +93,12 @@ def register():
     """Provides the tool and identity rules to the main service loader package."""
     prefix_enabled = SETTINGS.get("RESPONSE_PREFIX_ENABLED")
     if prefix_enabled is None:
-        prefix_enabled = get_config_value("RESPONSE_PREFIX_ENABLED", True)
+        bot_settings = get_config_value("DISCORD_BOT_SETTINGS", {})
+        if isinstance(bot_settings, dict):
+            # FIXED: Mapped to trace uppercase key layout parameters
+            prefix_enabled = bot_settings.get("RESPONSE_PREFIX_ENABLED", True)
+        else:
+            prefix_enabled = True
 
     return {
         "tools": [discord_interaction],

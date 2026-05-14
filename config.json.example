@@ -17,10 +17,10 @@
   "VERBOSE": true,
   "LITELLM_URL": "http://ai-litellm:4000/v1",
   "DISCORD_BOT_SETTINGS": {
-    "bot_token": "",
-    "guild_id": "",
-    "target_channel_id": "",
-    "response_prefix_enabled": true
+    "BOT_TOKEN": "",
+    "GUILD_ID": "",
+    "TARGET_CHANNEL_ID": "",
+    "RESPONSE_PREFIX_ENABLED": true
   },
   "ledger_template": "{ \"agent\": \"{agent_name}\", \"actions_logged\": \"{result}\" }"
 }
