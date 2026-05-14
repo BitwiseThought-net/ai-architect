@@ -38,7 +38,7 @@ pipeline {
                         sh "cp '${DISCORD_BOT_PY}' plugins/discord_bot.py"
 
                         sh "mkdir -p knowledge"
-                        sh "cp '${FILE_1}' knowledge/Python\ Machine\ Learning\ Second\ Edition.pdf"
+                        sh "cp '${FILE_1}' knowledge/Python_Machine_Learning_Second_Edition.pdf"
 
                         sh "sed -i 's/\\r\$//' .env"
 
