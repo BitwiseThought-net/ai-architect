@@ -49,11 +49,9 @@ def load_agent_and_tools(agent_config, llm):
         except Exception as e:
             log_warn(f"Failed to load tool {t_name}: {e}")
 
-    # FIXED: Re-mapped filesystem check properties to scan the "ai_io" package folder context
     ai_io_dir = os.path.join(os.path.dirname(__file__), "ai_io")
     if os.path.exists(ai_io_dir):
         try:
-            # Dynamically import the local package structure cleanly bypassing native libraries
             ai_io_package = importlib.import_module("ai_io")
             if hasattr(ai_io_package, "__path__"):
                 for loader, module_name, is_pkg in pkgutil.iter_modules(ai_io_package.__path__):
@@ -247,7 +245,9 @@ def run_mission():
         for sub_idx, task_entry in enumerate(task_entries):
             update_heartbeat()
             
-            if agent_name.lower() == "librarian":
+            # 1. SCAN DIRECTORIES SAFELY BEFORE KICKOFF
+            is_librarian = (agent_name.lower() == "librarian")
+            if is_librarian:
                 current_knowledge_sources = get_all_knowledge_sources()
             else:
                 current_knowledge_sources = []
@@ -266,26 +266,32 @@ def run_mission():
             if running_context:
                 task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
 
-            task_instance = current_layer.Task(
-                description=task_description,
-                expected_output=expected_output,
-                agent=agent
-            )
-            
-            step_crew = current_layer.Crew(
-                agents=[agent],
-                tasks=[task_instance],
-                verbose=get_config_value("VERBOSE", True),
-                knowledge_sources=current_knowledge_sources
-            )
-            
-            log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{agent_framework}]")
-            
-            set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
-            try:
+            # 2. SAFETY INTERCEPT GUARD: Bypass CrewAI loop stall if knowledge folder is completely empty []
+            if is_librarian and not current_knowledge_sources:
+                log_warn("⚠️ Empty Workspace Detected: No files found in /knowledge folder. Bypassing CrewAI execution loop safely to prevent stalling.")
+                step_result = "Librarian: Verification complete. The /knowledge directory is currently empty. Staged and ready for incoming asset uploads."
+            else:
+                # Standard Operation: Initialize and kickoff the framework engine loop
+                task_instance = current_layer.Task(
+                    description=task_description,
+                    expected_output=expected_output,
+                    agent=agent
+                )
+                
+                step_crew = current_layer.Crew(
+                    agents=[agent],
+                    tasks=[task_instance],
+                    verbose=get_config_value("VERBOSE", True),
+                    knowledge_sources=current_knowledge_sources
+                )
+                
+                log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{agent_framework}]")
+                set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
-                
+
+            # 3. ROUTE LOGS LIVE (Guaranteed Execution Pass)
+            try:
                 persist_agent_knowledge(
                     agent_name=agent_name,
                     framework=agent_framework,
@@ -326,4 +332,3 @@ def run_mission():
 
 if __name__ == "__main__":
     run_mission()
-
