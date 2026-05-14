@@ -57,7 +57,7 @@ def load_agent_and_tools(agent_config, llm):
                 for loader, module_name, is_pkg in pkgutil.iter_modules(io_package.__path__):
                     if module_name == "__init__": continue
                     try:
-                        module = importlib.import_module(f"io.{module_name}")
+                        module = importlib.import_module(f"ai_io.{module_name}")
                         importlib.reload(module)
                         
                         if hasattr(module, 'register'):
@@ -297,10 +297,10 @@ def run_mission():
                 
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
-                    log_text(f"🔀 Attempting dynamic route mapping execution: io/{route_token}.py")
+                    log_text(f"🔀 Attempting dynamic route mapping execution: ai_io/{route_token}.py")
                     
                     try:
-                        io_module = importlib.import_module(f"io.{route_token}")
+                        io_module = importlib.import_module(f"ai_io.{route_token}")
                         importlib.reload(io_module)
                         
                         if hasattr(io_module, "broadcast_status"):
