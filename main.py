@@ -261,6 +261,9 @@ def run_mission():
                 expected_output = "Provide complete terminal request output summary package."
                 log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name} (Task Step {sub_idx + 1})")
 
+            if running_context:
+                task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
+
             task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
@@ -281,9 +284,6 @@ def run_mission():
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
                 
-                # Verify that we actually have a non-empty string result before saving/routing
-                log_text(f"🔍 Task finished for {agent_name}. Raw result length: {len(step_result.strip())}")
-                
                 persist_agent_knowledge(
                     agent_name=agent_name,
                     framework=agent_framework,
@@ -297,18 +297,21 @@ def run_mission():
                 
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
-                    log_text(f"🔀 Attempting to execute dynamic IO routing channel: io/{route_token}.py")
+                    log_text(f"🔀 Attempting dynamic route mapping execution: io/{route_token}.py")
+                    
                     try:
                         io_module = importlib.import_module(f"io.{route_token}")
                         importlib.reload(io_module)
+                        
                         if hasattr(io_module, "broadcast_status"):
-                            success = io_module.broadcast_status(formatted_msg)
-                            log_text(f"📢 Channel route execution pass status for '{route_token}': {success}")
+                            # Execute status routing payload delivery
+                            route_success = io_module.broadcast_status(formatted_msg)
+                            log_text(f"📢 Channel execution result for '{route_token}': {route_success}")
                         else:
-                            log_error(f"❌ Route Interface Error: Module 'io/{route_token}.py' lacks a broadcast_status method.")
-                    except Exception as route_err:
+                            log_error(f"❌ Interface Error: Module 'io/{route_token}.py' is missing the mandatory broadcast_status function.")
+                    except Exception as route_crash:
                         # FIXED: Changed silent ignore block to explicit syntax diagnostics to trace import/formatting issues
-                        log_error(f"❌ Critical error inside channel execution loop for 'io/{route_token}.py': {route_err}")
+                        log_error(f"❌ Critical exception inside channel routing loop logic for 'io/{route_token}.py': {route_crash}")
                         
                 global_task_counter += 1
                 
