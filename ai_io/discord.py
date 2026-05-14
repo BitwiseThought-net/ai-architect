@@ -26,9 +26,6 @@ SETTINGS = {
     "RESPONSE_PREFIX_ENABLED": True
 }
 
-if 'DISCORD_BOT_SETTINGS' not in locals() and 'DISCORD_BOT_SETTINGS' not in globals():
-    DISCORD_BOT_SETTINGS = get_config_value("DISCORD_BOT_SETTINGS", SETTINGS)
-
 def _send_msg(message: str) -> bool:
     """
     Centralized communication routing endpoint helper.
@@ -36,36 +33,35 @@ def _send_msg(message: str) -> bool:
     Priority 2: Fall back dynamically to centralized get_config_value matrix lookups.
     """
     # 1. Resolve Bot Token
-    bot_token = DISCORD_BOT_SETTINGS.get("BOT_TOKEN")
-    print(f"A: bot_token:{bot_token}.")
-    print(f"A: bot_token:{bot_token}.")
-    if not bot_token:
-        bot_token = get_config_value("BOT_TOKEN")
-    if not bot_token:
+    BOT_TOKEN = SETTINGS.get("BOT_TOKEN")
+    print(f"A: BOT_TOKEN:{BOT_TOKEN}.")
+    if not BOT_TOKEN:
+        BOT_TOKEN = get_config_value("BOT_TOKEN")
+    if not BOT_TOKEN:
         return False
 
     # 2. Resolve Server ID (Guild ID)
-    server_id = DISCORD_BOT_SETTINGS.get("SERVER_ID")
-    print(f"B: bottoken:{bot_token}, server_id:{server_id}")
-    if not server_id:
-        server_id = get_config_value("SERVER_ID")
-    if not server_id:
+    SERVER_ID = SETTINGS.get("SERVER_ID")
+    print(f"B: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}")
+    if not SERVER_ID:
+        SERVER_ID = get_config_value("SERVER_ID")
+    if not SERVER_ID:
         return False
 
     # 3. Resolve Channel ID
-    channel_id = DISCORD_BOT_SETTINGS.get("CHANNEL_ID")
-    print(f"C: bot_token:{bot_token}, server_id:{server_id}, channel_id:{channel_id}.")
-    if not channel_id:
-        channel_id = get_config_value("CHANNEL_ID")
-    if not channel_id:
+    CHANNEL_ID = SETTINGS.get("CHANNEL_ID")
+    print(f"C: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
+    if not CHANNEL_ID:
+        CHANNEL_ID = get_config_value("CHANNEL_ID")
+    if not CHANNEL_ID:
         return False
 
-    print(f"D: bot_token:{bot_token}, server_id:{server_id}, channel_id:{channel_id}.")
+    print(f"D: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
     # VERIFIED CORRECT REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
-    url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    url = f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages"
     print(f"url:[{url}]")
     headers = {
-        "Authorization": f"Bot {bot_token}",
+        "Authorization": f"Bot {BOT_TOKEN}",
         "Content-Type": "application/json"
     }
 
@@ -87,7 +83,7 @@ def broadcast_status(message: str) -> bool:
 
 def register():
     """Provides the tool and identity rules to the main service loader package."""
-    prefix_enabled = DISCORD_BOT_SETTINGS.get("RESPONSE_PREFIX_ENABLED")
+    prefix_enabled = SETTINGS.get("RESPONSE_PREFIX_ENABLED")
     if prefix_enabled is None:
         prefix_enabled = get_config_value("RESPONSE_PREFIX_ENABLED", True)
 
