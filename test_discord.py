@@ -1,5 +1,5 @@
 # test_discord.py
-from io import discord
+from ai_io import discord
 import sys
 
 print("Firing immediate direct network test payload to Discord API...")
