@@ -22,15 +22,19 @@ COPY requirements.txt .
 # 1. Upgrade baseline packaging ecosystem binaries
 # 2. Pre-install telemetry, typing, and modern langchain layers to break version loops 
 # 3. Force installation via legacy resolver and ignore system package boundaries safely
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel --disable-pip-version-check && \
-    pip install --no-cache-dir \
-        "pydantic==2.10.6" \
-        "opentelemetry-api==1.25.0" \
-        "opentelemetry-sdk==1.25.0" \
-        "opentelemetry-semantic-conventions==0.46b0" \
-        "langchain-core>=0.3.0" \
-        --break-system-packages --disable-pip-version-check && \
-    pip install --no-cache-dir -r requirements.txt --use-deprecated=legacy-resolver --break-system-packages --disable-pip-version-check
+#pip install opentelemetry-api==1.21.0 opentelemetry-sdk==1.21.0
+
+#RUN pip install --no-cache-dir --upgrade pip setuptools wheel --disable-pip-version-check && \
+#    pip install --no-cache-dir \
+#        "pydantic==2.10.6" \
+#        "opentelemetry-api==1.25.0" \
+#        "opentelemetry-sdk==1.25.0" \
+#        "opentelemetry-semantic-conventions==0.46b0" \
+#        "langchain-core>=0.3.0" \
+#        --break-system-packages --disable-pip-version-check && \
+#    pip install --no-cache-dir -r requirements.txt --use-deprecated=legacy-resolver --break-system-packages --disable-pip-version-check
+
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel --disable-pip-version-check && pip install --no-cache-dir -r requirements.txt
 
 # Pre-provision the required persistent system directories 
 RUN mkdir -p /app/output /app/knowledge /app/io /app/.crewai
