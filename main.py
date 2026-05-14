@@ -9,36 +9,27 @@ from pathlib import Path
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import (
-    update_heartbeat, 
-    get_config_value, 
-    set_mission_timeout, 
+    update_heartbeat,
+    get_config_value,
+    set_mission_timeout,
     clear_mission_timeout,
     get_active_plugins
 )
 
 def load_agent_and_tools(agent_config, llm):
-    """
-    Dynamically boot-straps an individual agent using its specifically defined
-    framework engine while compiling its custom tool and plugin arrays from the io/ hub.
-    """
     agent_name = agent_config['name']
     framework = agent_config.get("framework", get_config_value("AI_FRAMEWORK", "crewai")).lower()
-    
+
     ai_layer_dir = os.path.join(os.path.dirname(__file__), "ai_layer")
     target_factory_path = os.path.join(ai_layer_dir, f"{framework}.py")
-    fallback_factory_path = os.path.join(ai_layer_dir, "crewai.py")
 
-    if os.path.exists(target_factory_path):
-        factory_module_string = f"ai_layer.{framework}"
-    else:
-        log_warn(f"Factory file missing for '{framework}' at {target_factory_path}. Falling back to crewai.")
-        if not os.path.exists(fallback_factory_path):
-            log_error(f"Critical Error: Baseline factory 'ai_layer/crewai.py' is missing entirely.")
-            return None, None
-        factory_module_string = "ai_layer.crewai"
+    if not os.path.exists(target_factory_path):
+        log_error(f"❌ Initialization aborted for agent '{agent_name}': Requested framework factory file '{target_factory_path}' is unimplemented.")
+        return None, None
 
+    factory_module_string = f"ai_layer.{framework}"
     log_text(f"Initializing agent '{agent_name}' using framework: [{factory_module_string}]")
-    
+
     try:
         _layer = importlib.import_module(factory_module_string)
     except Exception as e:
@@ -63,7 +54,7 @@ def load_agent_and_tools(agent_config, llm):
                     try:
                         module = importlib.import_module(f"io.{module_name}")
                         importlib.reload(module)
-                        
+
                         if hasattr(module, 'register'):
                             reg_data = module.register()
                             if reg_data:
@@ -82,9 +73,9 @@ def load_agent_and_tools(agent_config, llm):
         if not os.path.exists(agent_path):
             log_error(f"Agent file missing: {agent_path}")
             return None, None
-            
+
         agent_module = importlib.import_module(f"agents.{agent_name}")
-        
+
         native_llm = _layer.LLM(
             model=llm_config["model"],
             base_url=llm_config["base_url"],
@@ -92,7 +83,7 @@ def load_agent_and_tools(agent_config, llm):
             temperature=llm_config["temperature"],
             max_tokens=llm_config["max_tokens"]
         )
-        
+
         agent = _layer.Agent(
             role=agent_config.get("role", agent_name),
             goal=agent_config.get("task_description", "Execute mission assignments"),
@@ -127,9 +118,9 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
     knowledge_dir = get_config_value("KNOWLEDGE_DIR", "knowledge")
     if not os.path.exists(knowledge_dir):
         os.makedirs(knowledge_dir)
-        
+
     timestamp = int(time.time())
-    
+
     fallback_template = (
         "--- PERMANENT AGENT KNOWLEDGE LEDGER ---\n"
         "AGENT_NAME: {agent_name}\n"
@@ -142,9 +133,9 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
         "{result}\n"
         "--- END OF LEDGER ---\n"
     )
-    
+
     active_template = agent_template or get_config_value("ledger_template", fallback_template)
-    
+
     try:
         if isinstance(active_template, dict):
             filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.json"
@@ -170,7 +161,7 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
                 description=description,
                 result=result
             )
-            
+
         target_path = os.path.join(knowledge_dir, filename)
         with open(target_path, "w", encoding="utf-8") as f:
             f.write(ledger_content)
@@ -181,23 +172,23 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
 def run_mission():
     global llm_config
     update_heartbeat()
-    
+
     target_agent_name = None
     terminal_instruction = None
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--agent" and len(sys.argv) > 3:
-            target_agent_name = sys.argv[2].lower().strip()
-            terminal_instruction = sys.argv[3]
+        if sys.argv == "--agent" and len(sys.argv) > 3:
+            target_agent_name = sys.argv.lower().strip()
+            terminal_instruction = sys.argv
             log_action(f"📥 Target command routing initialized: Agent='{target_agent_name}'")
         else:
-            terminal_instruction = sys.argv[1]
+            terminal_instruction = sys.argv
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
-    
+
     try:
         wait_for_llm(litellm_url, model_name)
     except TimeoutError as e:
@@ -230,35 +221,34 @@ def run_mission():
         update_heartbeat()
         agent_name = item['name']
         agent_framework = item.get('framework', 'crewai')
-        
+
         output_channels = item.get("output", ["log"])
         if isinstance(output_channels, str):
             output_channels = [output_channels]
-            
+
         task_entries = item.get("tasks", [])
         if not task_entries:
             task_entries = [{"description": item.get("task_description", "Execute pipeline tasks"), "expected": item.get("expected_output", "Final response string")}]
-        
+
         agent_specific_template = item.get("ledger_template", None)
 
+        # Dynamic loop pass checks framework existence. It returns None if missing.
         agent, current_layer = load_agent_and_tools(item, None)
         if not agent or not current_layer:
-            log_error(f"Skipping steps for {agent_name}: Initialization error.")
+            log_error(f"⚠️ Skipping task execution sequence for '{agent_name}': Framework adapter definition is missing.")
             continue
 
         for sub_idx, task_entry in enumerate(task_entries):
             update_heartbeat()
-            
-            # FIXED: Only pass active knowledge models if the agent is explicitly the 'librarian'
-            # This shields standard research and coding agents from empty RAG context loop timeouts
+
             if agent_name.lower() == "librarian":
                 current_knowledge_sources = get_all_knowledge_sources()
             else:
                 current_knowledge_sources = []
-            
+
             task_description = task_entry.get('description', 'Execute mission assignments')
             expected_output = task_entry.get('expected', 'Provide comprehensive summary return payload')
-            
+
             is_explicit_match = (target_agent_name and agent_name.lower() == target_agent_name and sub_idx == 0)
             is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0 and sub_idx == 0)
 
@@ -272,21 +262,21 @@ def run_mission():
                 expected_output=expected_output,
                 agent=agent
             )
-            
+
             step_crew = current_layer.Crew(
                 agents=[agent],
                 tasks=[task_instance],
                 verbose=get_config_value("VERBOSE", True),
                 knowledge_sources=current_knowledge_sources
             )
-            
+
             log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{agent_framework}]")
-            
+
             set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
             try:
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
-                
+
                 persist_agent_knowledge(
                     agent_name=agent_name,
                     framework=agent_framework,
@@ -295,9 +285,9 @@ def run_mission():
                     result=step_result,
                     agent_template=agent_specific_template
                 )
-                
+
                 formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
-                
+
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
                     try:
@@ -308,9 +298,9 @@ def run_mission():
                             io_module.broadcast_status(formatted_msg)
                     except ImportError:
                         log_error(f"❌ Aborted route: No matching channel processing script 'io/{route_token}.py' exists for token.")
-                        
+
                 global_task_counter += 1
-                
+
             except Exception as e:
                 clear_mission_timeout()
                 log_error(f"❌ Critical failure execution phase on sub-task {sub_idx + 1} for agent {agent_name}: {e}")
