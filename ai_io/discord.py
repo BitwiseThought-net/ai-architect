@@ -37,7 +37,6 @@ def _send_msg(message: str) -> bool:
 
     # 1. Resolve Bot Token
     BOT_TOKEN = SETTINGS.get("BOT_TOKEN")
-    print(f"A: BOT_TOKEN:{BOT_TOKEN}.")
     if not BOT_TOKEN:
         # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
         BOT_TOKEN = bot_settings.get("BOT_TOKEN") if isinstance(bot_settings, dict) else None
@@ -46,7 +45,6 @@ def _send_msg(message: str) -> bool:
 
     # 2. Resolve Server ID (Guild ID)
     SERVER_ID = SETTINGS.get("SERVER_ID")
-    print(f"B: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}")
     if not SERVER_ID:
         # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
         SERVER_ID = bot_settings.get("GUILD_ID") if isinstance(bot_settings, dict) else None
@@ -55,18 +53,15 @@ def _send_msg(message: str) -> bool:
 
     # 3. Resolve Channel ID
     CHANNEL_ID = SETTINGS.get("CHANNEL_ID")
-    print(f"C: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
     if not CHANNEL_ID:
         # FIXED: Mapped key lookups to trace the correct nested UPPERCASE variable paths
         CHANNEL_ID = bot_settings.get("TARGET_CHANNEL_ID") if isinstance(bot_settings, dict) else None
     if not CHANNEL_ID:
         return False
 
-    print(f"D: BOT_TOKEN:{BOT_TOKEN}, SERVER_ID:{SERVER_ID}, CHANNEL_ID:{CHANNEL_ID}.")
 
     # MANDATORY REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
     url = f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages"
-    print(f"url:[{url}]")
 
     headers = {
         "Authorization": f"Bot {BOT_TOKEN}",
