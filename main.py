@@ -9,9 +9,9 @@ from pathlib import Path
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import (
-    update_heartbeat,
-    get_config_value,
-    set_mission_timeout,
+    update_heartbeat, 
+    get_config_value, 
+    set_mission_timeout, 
     clear_mission_timeout,
     get_active_plugins
 )
@@ -23,7 +23,7 @@ def load_agent_and_tools(agent_config, llm):
     """
     agent_name = agent_config['name']
     framework = agent_config.get("framework", get_config_value("AI_FRAMEWORK", "crewai")).lower()
-
+    
     ai_layer_dir = os.path.join(os.path.dirname(__file__), "ai_layer")
     target_factory_path = os.path.join(ai_layer_dir, f"{framework}.py")
     fallback_factory_path = os.path.join(ai_layer_dir, "crewai.py")
@@ -38,7 +38,7 @@ def load_agent_and_tools(agent_config, llm):
         factory_module_string = "ai_layer.crewai"
 
     log_text(f"Initializing agent '{agent_name}' using framework: [{factory_module_string}]")
-
+    
     try:
         _layer = importlib.import_module(factory_module_string)
     except Exception as e:
@@ -53,6 +53,7 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             log_warn(f"Tool {t_name} not found in tools folder.")
 
+    # Dynamic module loader parsing components straight from the /io directory context
     io_dir = os.path.join(os.path.dirname(__file__), "io")
     if os.path.exists(io_dir):
         try:
@@ -63,7 +64,7 @@ def load_agent_and_tools(agent_config, llm):
                     try:
                         module = importlib.import_module(f"io.{module_name}")
                         importlib.reload(module)
-
+                        
                         if hasattr(module, 'register'):
                             reg_data = module.register()
                             if reg_data:
@@ -82,9 +83,9 @@ def load_agent_and_tools(agent_config, llm):
         if not os.path.exists(agent_path):
             log_error(f"Agent file missing: {agent_path}")
             return None, None
-
+            
         agent_module = importlib.import_module(f"agents.{agent_name}")
-
+        
         native_llm = _layer.LLM(
             model=llm_config["model"],
             base_url=llm_config["base_url"],
@@ -92,7 +93,7 @@ def load_agent_and_tools(agent_config, llm):
             temperature=llm_config["temperature"],
             max_tokens=llm_config["max_tokens"]
         )
-
+        
         agent = _layer.Agent(
             role=agent_config.get("role", agent_name),
             goal=agent_config.get("task_description", "Execute mission assignments"),
@@ -122,60 +123,93 @@ def wait_for_llm(url, model):
             raise TimeoutError(f"LiteLLM timeout for {model}")
         time.sleep(15)
 
-def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, description: str, result: str):
+def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, description: str, result: str, agent_template: str = None):
     """
-    Serializes completed agent actions and output text into a permanent Markdown
-    file stored in the /knowledge base directory, making it instantly discoverable.
+    Serializes completed agent updates using a hierarchical lookup design pattern.
+    Supports both raw text string templates and structured JSON object templates natively.
     """
     knowledge_dir = get_config_value("KNOWLEDGE_DIR", "knowledge")
     if not os.path.exists(knowledge_dir):
         os.makedirs(knowledge_dir)
-
+        
     timestamp = int(time.time())
-    filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.txt"
-    target_path = os.path.join(knowledge_dir, filename)
-
-    # Structure the information using the dynamic template
-    ledger_content = (
-        f"--- PERMANENT AGENT KNOWLEDGE LEDGER ---\n"
-        f"AGENT_NAME: {agent_name}\n"
-        f"FRAMEWORK_CONTEXT: {framework}\n"
-        f"COMPLETION_TIMESTAMP: {timestamp}\n"
-        f"TASK_INDEX: {task_index}\n"
-        f"ASSIGNED_MISSION_PROMPT: {description}\n"
-        f"----------------------------------------\n"
-        f"COMPLETED_ACTIONS_AND_KNOWLEDGE_OUTCOME:\n"
-        f"{result}\n"
-        f"--- END OF LEDGER ---\n"
+    
+    fallback_template = (
+        "--- PERMANENT AGENT KNOWLEDGE LEDGER ---\n"
+        "AGENT_NAME: {agent_name}\n"
+        "FRAMEWORK_CONTEXT: {framework}\n"
+        "COMPLETION_TIMESTAMP: {timestamp}\n"
+        "TASK_INDEX: {task_index}\n"
+        "ASSIGNED_MISSION_PROMPT: {description}\n"
+        "----------------------------------------\n"
+        "COMPLETED_ACTIONS_AND_KNOWLEDGE_OUTCOME:\n"
+        "{result}\n"
+        "--- END OF LEDGER ---\n"
     )
-
+    
+    # RESOLUTION HIERARCHY CHAIN: Local Agent Override -> Global Config File -> Hardcoded Backup []
+    active_template = agent_template or get_config_value("ledger_template", fallback_template)
+    
     try:
+        # TYPE CHECK HANDLER: If config value is parsed into a dictionary (JSON object) []
+        if isinstance(active_template, dict):
+            filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.json"
+            
+            # Step-by-step token substitution inside dictionary items using a comprehension loop
+            structured_ledger = {}
+            for k, v in active_template.items():
+                templated_val = str(v).format(
+                    agent_name=agent_name,
+                    framework=framework,
+                    timestamp=timestamp,
+                    task_index=task_index,
+                    description=description,
+                    result=result
+                )
+                structured_ledger[k] = templated_val
+                
+            # Convert dictionary layout into structured JSON formatting string block
+            ledger_content = json.dumps(structured_ledger, indent=2)
+            
+        else:
+            # Standard Text Fallback path: Process as raw text template string []
+            filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.txt"
+            ledger_content = active_template.format(
+                agent_name=agent_name,
+                framework=framework,
+                timestamp=timestamp,
+                task_index=task_index,
+                description=description,
+                result=result
+            )
+            
+        target_path = os.path.join(knowledge_dir, filename)
         with open(target_path, "w", encoding="utf-8") as f:
             f.write(ledger_content)
         log_text(f"💾 Permanently persisted and logged new knowledge asset to: {target_path}")
     except Exception as e:
-        log_error(f"Failed writing knowledge file to ledger folder: {e}")
+        log_error(f"Failed token substitution formatting or writing knowledge ledger to file: {e}")
 
 def run_mission():
     global llm_config
     update_heartbeat()
-
+    
     target_agent_name = None
     terminal_instruction = None
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--agent" and len(sys.argv) > 3:
-            target_agent_name = sys.argv[2].lower().strip()
-            terminal_instruction = sys.argv[3]
+        if sys.argv == "--agent" and len(sys.argv) > 3:
+            target_agent_name = sys.argv.lower().strip()
+            terminal_instruction = sys.argv
             log_action(f"📥 Target command routing initialized: Agent='{target_agent_name}'")
         else:
-            terminal_instruction = sys.argv[1]
+            terminal_instruction = sys.argv
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
-
+    
     try:
         wait_for_llm(litellm_url, model_name)
     except TimeoutError as e:
@@ -201,22 +235,25 @@ def run_mission():
 
     active_agents = team_data.get('active_agents', [])
     log_action("Starting hot-swappable nested hybrid agent execution pipeline...")
+    running_context = ""
     global_task_counter = 1
 
     for idx, item in enumerate(active_agents):
         update_heartbeat()
         agent_name = item['name']
         agent_framework = item.get('framework', 'crewai')
-
+        
         output_channels = item.get("output", ["log"])
         if isinstance(output_channels, str):
             output_channels = [output_channels]
-
+            
         task_entries = item.get("tasks", [])
         if not task_entries:
             task_entries = [{"description": item.get("task_description", "Execute pipeline tasks"), "expected": item.get("expected_output", "Final response string")}]
+        
+        # Extract optional template local override parameters from the current agent JSON block
+        agent_specific_template = item.get("ledger_template", None)
 
-        # FIXED: Provision the agent dynamically fresh for this explicit task loop step
         agent, current_layer = load_agent_and_tools(item, None)
         if not agent or not current_layer:
             log_error(f"Skipping steps for {agent_name}: Initialization error.")
@@ -224,14 +261,11 @@ def run_mission():
 
         for sub_idx, task_entry in enumerate(task_entries):
             update_heartbeat()
-
-            # FIXED: Dynamically re-scan the /knowledge directory completely before every sub-task.
-            # This ensures any knowledge written by previous agents is immediately swallowed by this run.
             current_knowledge_sources = get_all_knowledge_sources()
-
+            
             task_description = task_entry.get('description', 'Execute mission assignments')
             expected_output = task_entry.get('expected', 'Provide comprehensive summary return payload')
-
+            
             is_explicit_match = (target_agent_name and agent_name.lower() == target_agent_name and sub_idx == 0)
             is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0 and sub_idx == 0)
 
@@ -240,41 +274,43 @@ def run_mission():
                 expected_output = "Provide complete terminal request output summary package."
                 log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name} (Task Step {sub_idx + 1})")
 
-            # Initialize the task block with the current contextual framework model
+            if running_context:
+                task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
+
+            # Pass parameters explicitly to satisfy underlying framework Pydantic validation requirements
             task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
                 agent=agent
             )
-
-            # Pass full aggregated knowledge sources right into the compiled micro-crew layout container
+            
             step_crew = current_layer.Crew(
                 agents=[agent],
                 tasks=[task_instance],
                 verbose=get_config_value("VERBOSE", True),
-                knowledge_sources=current_knowledge_sources # FIXED: Feeds full system knowledge dynamically
+                knowledge_sources=current_knowledge_sources
             )
-
+            
             log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{agent_framework}]")
-
+            
             set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
             try:
-                # Execute step and harvest response
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
-
-                # FIXED: Force the agent to save and persist its output data tokens permanently to the filesystem RAG directory
+                
+                # Forward the agent template layout tracker object down into the serializer execution loop
                 persist_agent_knowledge(
                     agent_name=agent_name,
                     framework=agent_framework,
                     task_index=global_task_counter,
                     description=task_description,
-                    result=step_result
+                    result=step_result,
+                    agent_template=agent_specific_template
                 )
-
+                
                 formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
-
-                # Broadcast metrics across dynamic channel tokens
+                
+                # Dynamic route mapping execution logic loop parsing items out of the /io package folder
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
                     try:
@@ -283,13 +319,11 @@ def run_mission():
                         if hasattr(io_module, "broadcast_status"):
                             log_text(f"🔀 Routing status update through dynamic channel: io/{route_token}.py")
                             io_module.broadcast_status(formatted_msg)
-                        else:
-                            log_warn(f"⚠️ Channel 'io/{route_token}.py' loaded but lacks standard broadcast_status interface function contract.")
                     except ImportError:
                         log_error(f"❌ Aborted route: No matching channel processing script 'io/{route_token}.py' exists for token.")
-
+                        
                 global_task_counter += 1
-
+                
             except Exception as e:
                 clear_mission_timeout()
                 log_error(f"❌ Critical failure execution phase on sub-task {sub_idx + 1} for agent {agent_name}: {e}")
@@ -301,3 +335,4 @@ def run_mission():
 
 if __name__ == "__main__":
     run_mission()
+
